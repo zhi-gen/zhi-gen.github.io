@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "nama": "E-book HTML Dasar",
+    "deskripsi": "Panduan lengkap belajar HTML dari nol untuk pemula.",
+    "kategori": "Free",
+    "url": "URL_DOWNLOAD_PRODUK_GRATIS_ANDA"
+  },
+  {
+    "id": 2,
+    "nama": "Template Website Portofolio",
+    "deskripsi": "Template siap pakai & responsif untuk portofolio online Anda.",
+    "kategori": "Premium",
+    "url": "URL_DOWNLOAD_PRODUK_PREMIUM_ANDA"
+  },
+  {
+    "id": 3,
+    "nama": "Icon Pack Eksklusif",
+    "deskripsi": "Kumpulan 100+ ikon vektor untuk kebutuhan desain Anda.",
+    "kategori": "Premium",
+    "url": "URL_DOWNLOAD_PRODUK_PREMIUM_LAINNYA"
+  },
+  {
+    "id": 4,
+    "nama": "Panduan CSS Flexbox",
+    "deskripsi": "Pelajari cara membuat layout modern dengan Flexbox.",
+    "kategori": "Free",
+    "url": "URL_DOWNLOAD_PRODUK_GRATIS_LAINNYA"
+  }
+]

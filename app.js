@@ -1,25 +1,63 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // URL Google Sheet Anda
+document.addEventListener('DOMContentLoaded', async () => {
+    // =========================================================================
+    // BAGIAN KONFIGURASI - GANTI DENGAN DATA ANDA
+    // =========================================================================
     const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbw2YmhgCFpbRIgUkc7nZgYaOkIOWXCg2dq78npUgKa-WY_NWD14KePGYG8vU1O_TIQ2Nw/exec';
+    const AUTH0_DOMAIN = 'dev-qijbemgc31r4iyd8.us.auth0.com';
+    const AUTH0_CLIENT_ID = 'xmF7sJsU1CsgFLwuukJFNuXcPql4CAOZ';
+    // =========================================================================
 
+    // Variabel Global
+    let auth0Client = null;
+    let allProducts = [];
+    
+    // Elemen DOM
     const productContainer = document.getElementById('product-container');
     const loadingMessage = document.getElementById('loading-message');
     const judulProduk = document.getElementById('judul-produk');
+    const authContainer = document.getElementById('auth-container');
 
-    // Variabel untuk menyimpan semua produk setelah diambil dari sheet
-    let allProducts = [];
+    // =========================================================================
+    // LOGIKA OTENTIKASI (AUTH0)
+    // =========================================================================
+    const configureAuth0Client = async () => {
+        try {
+            auth0Client = await auth0.createAuth0Client({
+                domain: AUTH0_DOMAIN,
+                clientId: AUTH0_CLIENT_ID,
+                authorizationParams: { redirect_uri: window.location.origin }
+            });
+        } catch (e) {
+            console.error("Gagal menginisialisasi Auth0 Client:", e);
+        }
+    };
 
-    // Fungsi untuk menampilkan produk berdasarkan filter
+    const updateUI = async () => {
+        const isAuthenticated = await auth0Client.isAuthenticated();
+        if (isAuthenticated) {
+            const user = await auth0Client.getUser();
+            authContainer.innerHTML = `
+                <span class="navbar-text text-white me-3">Halo, ${user.name}!</span>
+                <button class="btn btn-sm btn-outline-light" onclick="logout()">Logout</button>
+            `;
+        } else {
+            authContainer.innerHTML = `<a class="nav-link" href="#" id="btn-login"><i class="bi bi-person-plus-fill"></i> Daftar/Login</a>`;
+            document.getElementById('btn-login').addEventListener('click', login);
+        }
+    };
+
+    const login = async () => await auth0Client.loginWithRedirect();
+    
+    window.logout = () => auth0Client.logout({ logoutParams: { returnTo: window.location.origin } });
+
+    // =========================================================================
+    // LOGIKA PRODUK
+    // =========================================================================
     const displayProducts = (filter) => {
-        productContainer.innerHTML = ''; // Kosongkan kontainer
+        productContainer.innerHTML = '';
         judulProduk.textContent = `Produk ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
-
-        const filteredProducts = allProducts.filter(product => {
-            if (filter === 'semua') {
-                return true; // Tampilkan semua
-            }
-            return product.kategori.toLowerCase() === filter;
-        });
+        
+        const filteredProducts = allProducts.filter(p => filter === 'semua' || p.kategori.toLowerCase() === filter);
 
         if (filteredProducts.length === 0) {
             productContainer.innerHTML = '<p>Tidak ada produk dalam kategori ini.</p>';
@@ -33,10 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 buttonHtml = `<a href="${product.file_url}" class="btn btn-primary w-100" target="_blank" rel="noopener noreferrer">Download Gratis</a>`;
             }
-
             const productCard = document.createElement('div');
             productCard.className = 'col-lg-3 col-md-4 col-sm-6';
-
             productCard.innerHTML = `
                 <div class="card h-100 shadow-sm product-card">
                     <img src="${product.gambar_url}" class="card-img-top" alt="${product.nama}">
@@ -51,44 +87,42 @@ document.addEventListener('DOMContentLoaded', () => {
             productContainer.appendChild(productCard);
         });
     };
-
-    // Fungsi utama untuk memuat semua produk
+    
     const loadAllProducts = async () => {
         try {
             const response = await fetch(GOOGLE_SHEET_URL);
-            if (!response.ok) {
-                throw new Error('Gagal mengambil data.');
-            }
             allProducts = await response.json();
-            
             loadingMessage.style.display = 'none';
-            displayProducts('semua'); // Tampilkan semua produk saat pertama kali dimuat
-
+            displayProducts('semua');
         } catch (error) {
-            console.error('Terjadi kesalahan:', error);
+            console.error('Gagal memuat produk:', error);
             loadingMessage.textContent = 'Gagal memuat produk.';
             loadingMessage.style.color = 'red';
         }
     };
 
-    // Menambahkan event listener ke menu filter
-    document.getElementById('filter-semua').addEventListener('click', (e) => {
-        e.preventDefault();
-        displayProducts('semua');
-    });
-    document.getElementById('menu-dashboard').addEventListener('click', (e) => {
-        e.preventDefault();
-        displayProducts('semua');
-    });
-    document.getElementById('filter-premium').addEventListener('click', (e) => {
-        e.preventDefault();
-        displayProducts('premium');
-    });
-    document.getElementById('filter-free').addEventListener('click', (e) => {
-        e.preventDefault();
-        displayProducts('free');
-    });
+    // =========================================================================
+    // INISIALISASI HALAMAN
+    // =========================================================================
+    // 1. Konfigurasi Auth0
+    await configureAuth0Client();
+    
+    // 2. Cek jika ini adalah redirect dari Auth0
+    const query = window.location.search;
+    if (query.includes("code=") && query.includes("state=")) {
+        await auth0Client.handleRedirectCallback();
+        window.history.replaceState({}, document.title, "/");
+    }
+    
+    // 3. Update UI Login/Logout
+    await updateUI();
+    
+    // 4. Muat Produk
+    await loadAllProducts();
 
-    // Panggil fungsi utama saat halaman dimuat
-    loadAllProducts();
+    // 5. Pasang Event Listener untuk Filter
+    document.getElementById('filter-semua').addEventListener('click', (e) => { e.preventDefault(); displayProducts('semua'); });
+    document.getElementById('menu-dashboard').addEventListener('click', (e) => { e.preventDefault(); displayProducts('semua'); });
+    document.getElementById('filter-premium').addEventListener('click', (e) => { e.preventDefault(); displayProducts('premium'); });
+    document.getElementById('filter-free').addEventListener('click', (e) => { e.preventDefault(); displayProducts('free'); });
 });
